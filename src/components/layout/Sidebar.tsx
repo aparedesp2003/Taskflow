@@ -58,8 +58,13 @@ export default function Sidebar() {
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-zinc-800 bg-zinc-900">
-      <div className="flex h-14 items-center border-b border-zinc-800 px-5">
-        <span className="text-lg font-semibold tracking-tight text-white">
+      <div className="flex h-14 items-center gap-2.5 border-b border-zinc-800 px-5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-500 text-white">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+        </div>
+        <span className="text-lg font-bold tracking-tight text-white">
           Task<span className="text-indigo-400">Flow</span>
         </span>
       </div>

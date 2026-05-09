@@ -20,8 +20,8 @@ export default async function AppShell({ children }: AppShellProps) {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar userEmail={userEmail} />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
+        <main className="flex-1 overflow-y-auto px-8 py-6 xl:px-10">
+          <div className="mx-auto w-full max-w-450">{children}</div>
         </main>
       </div>
     </div>
