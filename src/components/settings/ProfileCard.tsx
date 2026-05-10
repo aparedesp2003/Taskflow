@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
 
 function getInitials(name: string, email: string): string {
   const trimmed = name.trim();
@@ -21,32 +22,27 @@ type ProfileCardProps = {
 
 export default function ProfileCard({ userId, fullName, email }: ProfileCardProps) {
   const router = useRouter();
+  const toast  = useToast();
 
   const [name,         setName]         = useState(fullName);
   const [savedName,    setSavedName]    = useState(fullName);
   const [isEditing,    setIsEditing]    = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
-  const [success,      setSuccess]      = useState(false);
 
   const initials = getInitials(name, email);
 
   function handleEdit() {
     setName(savedName);
     setIsEditing(true);
-    setError(null);
-    setSuccess(false);
   }
 
   function handleCancel() {
     setName(savedName);
     setIsEditing(false);
-    setError(null);
   }
 
   async function handleSave() {
     setIsSubmitting(true);
-    setError(null);
 
     const supabase = createClient();
     const { error: updateError } = await supabase
@@ -57,7 +53,7 @@ export default function ProfileCard({ userId, fullName, email }: ProfileCardProp
     setIsSubmitting(false);
 
     if (updateError) {
-      setError(updateError.message);
+      toast.error(updateError.message);
       return;
     }
 
@@ -65,8 +61,7 @@ export default function ProfileCard({ userId, fullName, email }: ProfileCardProp
     setSavedName(trimmed);
     setName(trimmed);
     setIsEditing(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    toast.success("Profile updated successfully");
     router.refresh();
   }
 
@@ -134,8 +129,6 @@ export default function ProfileCard({ userId, fullName, email }: ProfileCardProp
             </p>
           )}
 
-          {error   && <p className="mt-1.5 text-xs text-red-400">{error}</p>}
-          {success && <p className="mt-1.5 text-xs text-emerald-400">Saved successfully</p>}
         </div>
       </div>
     </Card>

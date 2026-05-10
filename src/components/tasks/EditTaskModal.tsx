@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
 import type { Task, TaskStatus, TaskPriority } from "@/types/task";
 
 type TaskFormState = {
@@ -26,6 +27,7 @@ type EditTaskModalProps = {
 
 export default function EditTaskModal({ task, isOpen, onClose }: EditTaskModalProps) {
   const router = useRouter();
+  const toast  = useToast();
 
   const [form,              setForm]              = useState<TaskFormState>({
     title:       task.title,
@@ -36,11 +38,8 @@ export default function EditTaskModal({ task, isOpen, onClose }: EditTaskModalPr
   });
   const [errors,            setErrors]            = useState<FormErrors>({});
   const [isSubmitting,      setIsSubmitting]      = useState(false);
-  const [submitError,       setSubmitError]       = useState<string | null>(null);
-  const [submitSuccess,     setSubmitSuccess]     = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting,        setIsDeleting]        = useState(false);
-  const [deleteSuccess,     setDeleteSuccess]     = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -52,11 +51,8 @@ export default function EditTaskModal({ task, isOpen, onClose }: EditTaskModalPr
         dueDate:     task.dueDate,
       });
       setErrors({});
-      setSubmitError(null);
-      setSubmitSuccess(false);
       setShowDeleteConfirm(false);
       setIsDeleting(false);
-      setDeleteSuccess(false);
     }
   }, [isOpen, task]);
 
@@ -76,7 +72,6 @@ export default function EditTaskModal({ task, isOpen, onClose }: EditTaskModalPr
     }
 
     setIsSubmitting(true);
-    setSubmitError(null);
 
     const supabase = createClient();
 
@@ -93,16 +88,14 @@ export default function EditTaskModal({ task, isOpen, onClose }: EditTaskModalPr
       .eq("project_id", task.projectId);
 
     if (error) {
-      setSubmitError(error.message);
+      toast.error(error.message);
       setIsSubmitting(false);
       return;
     }
 
-    setSubmitSuccess(true);
-    setTimeout(() => {
-      onClose();
-      router.refresh();
-    }, 500);
+    toast.success("Task updated successfully");
+    onClose();
+    router.refresh();
   }
 
   async function handleDelete() {
@@ -117,45 +110,20 @@ export default function EditTaskModal({ task, isOpen, onClose }: EditTaskModalPr
       .eq("project_id", task.projectId);
 
     if (error) {
-      setSubmitError(error.message);
+      toast.error(error.message);
       setIsDeleting(false);
       setShowDeleteConfirm(false);
       return;
     }
 
-    setDeleteSuccess(true);
-    setTimeout(() => {
-      onClose();
-      router.refresh();
-    }, 500);
+    toast.success("Task deleted successfully");
+    onClose();
+    router.refresh();
   }
-
-  const isSuccess = submitSuccess || deleteSuccess;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Task">
-      {isSuccess ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-emerald-400"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <p className="text-sm font-medium text-white">
-            {deleteSuccess ? "Task deleted" : "Task updated successfully"}
-          </p>
-        </div>
-      ) : showDeleteConfirm ? (
+      {showDeleteConfirm ? (
         <div className="flex flex-col items-center justify-center gap-4 py-6 text-center">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
             <svg
@@ -288,10 +256,6 @@ export default function EditTaskModal({ task, isOpen, onClose }: EditTaskModalPr
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none transition-colors focus:border-indigo-500 scheme-dark"
             />
           </div>
-
-          {submitError && (
-            <p className="text-xs text-red-400">{submitError}</p>
-          )}
 
           <div className="flex items-center justify-between gap-3 pt-2">
             <button

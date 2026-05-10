@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Card from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
 
 type AccountCardProps = {
   email:     string;
@@ -10,9 +11,10 @@ type AccountCardProps = {
 };
 
 export default function AccountCard({ email, createdAt }: AccountCardProps) {
+  const toast = useToast();
+
   const [isSending, setIsSending] = useState(false);
   const [sent,      setSent]      = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
 
   const formattedDate = createdAt
     ? new Date(createdAt).toLocaleDateString("en-US", {
@@ -24,7 +26,6 @@ export default function AccountCard({ email, createdAt }: AccountCardProps) {
 
   async function handlePasswordReset() {
     setIsSending(true);
-    setError(null);
 
     const supabase = createClient();
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
@@ -34,7 +35,7 @@ export default function AccountCard({ email, createdAt }: AccountCardProps) {
     setIsSending(false);
 
     if (resetError) {
-      setError(resetError.message);
+      toast.error(resetError.message);
       return;
     }
 
@@ -85,11 +86,6 @@ export default function AccountCard({ email, createdAt }: AccountCardProps) {
           </button>
         </div>
 
-        {error && (
-          <div className="px-6 pb-4">
-            <p className="text-xs text-red-400">{error}</p>
-          </div>
-        )}
       </div>
     </Card>
   );

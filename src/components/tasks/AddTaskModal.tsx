@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
 import type { TaskStatus, TaskPriority } from "@/types/task";
 
 type TaskFormState = {
@@ -25,6 +26,7 @@ type AddTaskModalProps = {
 
 export default function AddTaskModal({ projectId, defaultStatus }: AddTaskModalProps) {
   const router = useRouter();
+  const toast  = useToast();
 
   const initialState: TaskFormState = {
     title:       "",
@@ -34,19 +36,15 @@ export default function AddTaskModal({ projectId, defaultStatus }: AddTaskModalP
     dueDate:     "",
   };
 
-  const [isOpen,        setIsOpen]        = useState(false);
-  const [form,          setForm]          = useState<TaskFormState>(initialState);
-  const [errors,        setErrors]        = useState<FormErrors>({});
-  const [isSubmitting,  setIsSubmitting]  = useState(false);
-  const [submitError,   setSubmitError]   = useState<string | null>(null);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [isOpen,       setIsOpen]       = useState(false);
+  const [form,         setForm]         = useState<TaskFormState>(initialState);
+  const [errors,       setErrors]       = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleClose() {
     setIsOpen(false);
     setForm(initialState);
     setErrors({});
-    setSubmitError(null);
-    setSubmitSuccess(false);
     setIsSubmitting(false);
   }
 
@@ -66,7 +64,6 @@ export default function AddTaskModal({ projectId, defaultStatus }: AddTaskModalP
     }
 
     setIsSubmitting(true);
-    setSubmitError(null);
 
     const supabase = createClient();
 
@@ -80,16 +77,14 @@ export default function AddTaskModal({ projectId, defaultStatus }: AddTaskModalP
     });
 
     if (error) {
-      setSubmitError(error.message);
+      toast.error(error.message);
       setIsSubmitting(false);
       return;
     }
 
-    setSubmitSuccess(true);
-    setTimeout(() => {
-      handleClose();
-      router.refresh();
-    }, 500);
+    toast.success("Task created successfully");
+    handleClose();
+    router.refresh();
   }
 
   return (
@@ -103,27 +98,7 @@ export default function AddTaskModal({ projectId, defaultStatus }: AddTaskModalP
       </button>
 
       <Modal isOpen={isOpen} onClose={handleClose} title="Add Task">
-        {submitSuccess ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-emerald-400"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-white">Task created successfully</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="task-title" className="mb-1.5 block text-xs font-medium text-zinc-400">
                 Title <span className="text-red-400">*</span>
@@ -214,10 +189,6 @@ export default function AddTaskModal({ projectId, defaultStatus }: AddTaskModalP
               />
             </div>
 
-            {submitError && (
-              <p className="text-xs text-red-400">{submitError}</p>
-            )}
-
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -235,8 +206,7 @@ export default function AddTaskModal({ projectId, defaultStatus }: AddTaskModalP
                 {isSubmitting ? "Adding..." : "Add Task"}
               </button>
             </div>
-          </form>
-        )}
+        </form>
       </Modal>
     </>
   );

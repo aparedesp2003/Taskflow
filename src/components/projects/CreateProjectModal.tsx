@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/hooks/useToast";
 import type { ProjectStatus } from "@/types/project";
 
 type ProjectFormState = {
@@ -26,20 +27,17 @@ const initialState: ProjectFormState = {
 
 export default function CreateProjectModal() {
   const router = useRouter();
+  const toast  = useToast();
 
-  const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState<ProjectFormState>(initialState);
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [isOpen,       setIsOpen]       = useState(false);
+  const [form,         setForm]         = useState<ProjectFormState>(initialState);
+  const [errors,       setErrors]       = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   function handleClose() {
     setIsOpen(false);
     setForm(initialState);
     setErrors({});
-    setSubmitError(null);
-    setSubmitSuccess(false);
     setIsSubmitting(false);
   }
 
@@ -59,7 +57,6 @@ export default function CreateProjectModal() {
     }
 
     setIsSubmitting(true);
-    setSubmitError(null);
 
     const supabase = createClient();
 
@@ -68,7 +65,7 @@ export default function CreateProjectModal() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setSubmitError("You must be signed in to create a project.");
+      toast.error("You must be signed in to create a project.");
       setIsSubmitting(false);
       return;
     }
@@ -82,16 +79,14 @@ export default function CreateProjectModal() {
     });
 
     if (error) {
-      setSubmitError(error.message);
+      toast.error(error.message);
       setIsSubmitting(false);
       return;
     }
 
-    setSubmitSuccess(true);
-    setTimeout(() => {
-      handleClose();
-      router.refresh();
-    }, 500);
+    toast.success("Project created successfully");
+    handleClose();
+    router.refresh();
   }
 
   return (
@@ -105,27 +100,7 @@ export default function CreateProjectModal() {
       </button>
 
       <Modal isOpen={isOpen} onClose={handleClose} title="Create New Project">
-        {submitSuccess ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-emerald-400"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-white">Project created successfully</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="project-name" className="mb-1.5 block text-xs font-medium text-zinc-400">
                 Project name <span className="text-red-400">*</span>
@@ -215,10 +190,6 @@ export default function CreateProjectModal() {
               />
             </div>
 
-            {submitError && (
-              <p className="text-xs text-red-400">{submitError}</p>
-            )}
-
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -236,8 +207,7 @@ export default function CreateProjectModal() {
                 {isSubmitting ? "Creating..." : "Create Project"}
               </button>
             </div>
-          </form>
-        )}
+        </form>
       </Modal>
     </>
   );
