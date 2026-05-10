@@ -22,25 +22,32 @@ function EyeOffIcon() {
   );
 }
 
-export default function SignupForm() {
-  const [email,        setEmail]        = useState("");
+export default function ResetPasswordForm() {
   const [password,     setPassword]     = useState("");
+  const [confirm,      setConfirm]      = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error,        setError]        = useState<string | null>(null);
   const [success,      setSuccess]      = useState(false);
 
-  async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.signUp({ email, password });
+    const { error: updateError } = await supabase.auth.updateUser({ password });
 
-    if (authError) {
-      setError(authError.message);
-      setIsSubmitting(false);
+    setIsSubmitting(false);
+
+    if (updateError) {
+      setError(updateError.message);
       return;
     }
 
@@ -66,24 +73,21 @@ export default function SignupForm() {
           </svg>
         </div>
         <div>
-          <p className="text-sm font-semibold text-white">Check your inbox</p>
-          <p className="mt-1 text-xs text-zinc-500">
-            We sent a confirmation link to{" "}
-            <span className="text-zinc-300">{email}</span>
-          </p>
+          <p className="text-sm font-semibold text-white">Password updated</p>
+          <p className="mt-1 text-xs text-zinc-500">You can now log in with your new password.</p>
         </div>
         <Link
           href="/login"
-          className="mt-1 text-xs font-medium text-indigo-400 transition-colors hover:text-indigo-300"
+          className="mt-1 rounded-lg bg-indigo-600 px-5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500"
         >
-          Back to Log In
+          Go to Log In
         </Link>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSignup} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
         <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-400">
           {error}
@@ -91,27 +95,12 @@ export default function SignupForm() {
       )}
 
       <div>
-        <label htmlFor="signup-email" className="mb-1.5 block text-xs font-medium text-zinc-400">
-          Email
-        </label>
-        <input
-          id="signup-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          required
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 transition-colors focus:border-indigo-500"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="signup-password" className="mb-1.5 block text-xs font-medium text-zinc-400">
-          Password
+        <label htmlFor="new-password" className="mb-1.5 block text-xs font-medium text-zinc-400">
+          New password
         </label>
         <div className="relative">
           <input
-            id="signup-password"
+            id="new-password"
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -131,20 +120,28 @@ export default function SignupForm() {
         </div>
       </div>
 
+      <div>
+        <label htmlFor="confirm-password" className="mb-1.5 block text-xs font-medium text-zinc-400">
+          Confirm password
+        </label>
+        <input
+          id="confirm-password"
+          type={showPassword ? "text" : "password"}
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          placeholder="••••••••"
+          required
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 transition-colors focus:border-indigo-500"
+        />
+      </div>
+
       <button
         type="submit"
         disabled={isSubmitting}
         className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-60"
       >
-        {isSubmitting ? "Creating account..." : "Create Account"}
+        {isSubmitting ? "Updating..." : "Update Password"}
       </button>
-
-      <p className="text-center text-xs text-zinc-500">
-        Already have an account?{" "}
-        <Link href="/login" className="font-medium text-zinc-300 transition-colors hover:text-white">
-          Log in
-        </Link>
-      </p>
     </form>
   );
 }
