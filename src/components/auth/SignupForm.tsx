@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 function EyeIcon() {
@@ -23,20 +24,21 @@ function EyeOffIcon() {
 }
 
 export default function SignupForm() {
-  const [email,        setEmail]        = useState("");
-  const [password,     setPassword]     = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
-  const [success,      setSuccess]      = useState(false);
+  const router = useRouter();
+  const [email,           setEmail]           = useState("");
+  const [password,        setPassword]        = useState("");
+  const [showPassword,    setShowPassword]    = useState(false);
+  const [isSubmitting,    setIsSubmitting]    = useState(false);
+  const [error,           setError]           = useState<string | null>(null);
+  const [submittedEmail,  setSubmittedEmail]  = useState<string | null>(null);
 
-  async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.signUp({ email, password });
+    const { data, error: authError } = await supabase.auth.signUp({ email, password });
 
     if (authError) {
       setError(authError.message);
@@ -44,10 +46,16 @@ export default function SignupForm() {
       return;
     }
 
-    setSuccess(true);
+    if (data.session) {
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    setSubmittedEmail(email);
   }
 
-  if (success) {
+  if (submittedEmail) {
     return (
       <div className="flex flex-col items-center gap-4 py-4 text-center">
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10">
@@ -69,7 +77,7 @@ export default function SignupForm() {
           <p className="text-sm font-semibold text-white">Check your inbox</p>
           <p className="mt-1 text-xs text-zinc-500">
             We sent a confirmation link to{" "}
-            <span className="text-zinc-300">{email}</span>
+            <span className="text-zinc-300">{submittedEmail}</span>
           </p>
         </div>
         <Link
