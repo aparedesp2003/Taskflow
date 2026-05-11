@@ -72,7 +72,12 @@ const navItems: NavItem[] = [
   },
 ];
 
-export default function Sidebar() {
+type SidebarProps = {
+  isOpen?:  boolean;
+  onClose?: () => void;
+};
+
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -84,7 +89,14 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-zinc-800 bg-zinc-900">
+    <aside
+      className={[
+        "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[80vw] flex-col border-r border-zinc-800 bg-zinc-900",
+        "transition-transform duration-300 ease-in-out",
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        "lg:static lg:inset-auto lg:z-auto lg:h-screen lg:w-64 lg:max-w-none lg:translate-x-0",
+      ].join(" ")}
+    >
       <div className="flex h-14 items-center gap-2.5 border-b border-zinc-800 px-5">
         {/* T Monogram icon */}
         <svg width="28" height="28" viewBox="0 0 512 512" aria-hidden="true">
@@ -131,6 +143,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-zinc-800 text-white"
@@ -147,7 +160,7 @@ export default function Sidebar() {
       <div className="border-t border-zinc-800 px-3 py-4">
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={() => { onClose?.(); handleLogout(); }}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800/60 hover:text-white"
         >
           <svg
