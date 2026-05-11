@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
 import { createClient } from "@/lib/supabase/client";
+import { uploadAvatar, validateAvatarFile } from "@/lib/supabase/storage";
 import { useToast } from "@/hooks/useToast";
 
 function getInitials(name: string, email: string): string {
@@ -15,19 +17,23 @@ function getInitials(name: string, email: string): string {
 }
 
 type ProfileCardProps = {
-  userId:   string;
-  fullName: string;
-  email:    string;
+  userId:     string;
+  fullName:   string;
+  email:      string;
+  avatarUrl?: string | null;
 };
 
-export default function ProfileCard({ userId, fullName, email }: ProfileCardProps) {
-  const router = useRouter();
-  const toast  = useToast();
+export default function ProfileCard({ userId, fullName, email, avatarUrl }: ProfileCardProps) {
+  const router      = useRouter();
+  const toast       = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name,         setName]         = useState(fullName);
   const [savedName,    setSavedName]    = useState(fullName);
   const [isEditing,    setIsEditing]    = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [avatarState,  setAvatarState]  = useState<string | null>(avatarUrl ?? null);
+  const [isUploading,  setIsUploading]  = useState(false);
 
   const initials = getInitials(name, email);
 
@@ -65,6 +71,40 @@ export default function ProfileCard({ userId, fullName, email }: ProfileCardProp
     router.refresh();
   }
 
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset so re-selecting the same file still fires onChange
+    e.target.value = "";
+
+    const validationError = validateAvatarFile(file);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const supabase = createClient();
+      const newUrl   = await uploadAvatar(supabase, userId, file);
+
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: newUrl })
+        .eq("id", userId);
+
+      if (dbError) throw dbError;
+
+      setAvatarState(newUrl);
+      toast.success("Profile picture updated");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   return (
     <Card>
       <div className="border-b border-zinc-800 px-6 py-4">
@@ -72,14 +112,74 @@ export default function ProfileCard({ userId, fullName, email }: ProfileCardProp
       </div>
       <div className="px-6 py-5">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-lg font-semibold text-white">
-            {initials}
-          </div>
+
+          {/* Avatar with upload overlay */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            aria-label="Upload profile picture"
+            className="group relative h-14 w-14 shrink-0 cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900 disabled:cursor-not-allowed"
+          >
+            {/* Image or initials */}
+            {avatarState ? (
+              <Image
+                src={avatarState}
+                alt="Profile picture"
+                width={56}
+                height={56}
+                className="h-14 w-14 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-lg font-semibold text-white">
+                {initials}
+              </div>
+            )}
+
+            {/* Camera icon — visible on hover when not uploading */}
+            {!isUploading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </div>
+            )}
+
+            {/* Spinner overlay — visible while uploading */}
+            {isUploading && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                <svg className="h-5 w-5 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              </div>
+            )}
+          </button>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            aria-label="Upload profile picture"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-white">
               {name.trim() ? name.trim() : <span className="text-zinc-500">No name set</span>}
             </p>
             <p className="truncate text-xs text-zinc-500">{email}</p>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="mt-1 text-xs text-indigo-400 transition-colors hover:text-indigo-300 disabled:pointer-events-none disabled:opacity-50"
+            >
+              {isUploading ? "Uploading..." : "Upload Photo"}
+            </button>
           </div>
         </div>
 
@@ -128,7 +228,6 @@ export default function ProfileCard({ userId, fullName, email }: ProfileCardProp
               {savedName.trim() ? savedName.trim() : <span className="text-zinc-600">Not set</span>}
             </p>
           )}
-
         </div>
       </div>
     </Card>

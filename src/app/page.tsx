@@ -1,56 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-
-type MockTask = {
-  title:    string;
-  priority: "high" | "medium" | "low";
-};
-
-type MockColumn = {
-  label: string;
-  color: string;
-  tasks: MockTask[];
-};
-
-const MOCK_COLUMNS: MockColumn[] = [
-  {
-    label: "To Do",
-    color: "text-zinc-400",
-    tasks: [
-      { title: "Design landing page",  priority: "high"   },
-      { title: "Write documentation",  priority: "low"    },
-    ],
-  },
-  {
-    label: "In Progress",
-    color: "text-amber-400",
-    tasks: [
-      { title: "Build authentication", priority: "high"   },
-      { title: "API integration",      priority: "medium" },
-    ],
-  },
-  {
-    label: "Done",
-    color: "text-emerald-400",
-    tasks: [
-      { title: "Setup database",       priority: "medium" },
-      { title: "Configure CI/CD",      priority: "low"    },
-    ],
-  },
-];
-
-const PRIORITY_STYLES: Record<MockTask["priority"], string> = {
-  high:   "bg-red-500/10 text-red-400",
-  medium: "bg-amber-500/10 text-amber-400",
-  low:    "bg-zinc-800 text-zinc-400",
-};
-
-const PRIORITY_LABELS: Record<MockTask["priority"], string> = {
-  high:   "High",
-  medium: "Medium",
-  low:    "Low",
-};
+import HeroMockup from "@/components/landing/HeroMockup";
 
 const FEATURES = [
   {
@@ -170,65 +121,9 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Mock Dashboard Preview */}
+        {/* Hero Mockup */}
         <div className="relative mx-auto mt-14 hidden max-w-5xl sm:block">
-          <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl shadow-black/60 ring-1 ring-white/[0.04]">
-            {/* Browser chrome */}
-            <div className="flex h-9 items-center gap-1.5 border-b border-zinc-800 bg-zinc-900/80 px-4">
-              <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-              <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-              <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-              <div className="ml-3 flex h-5 w-44 items-center rounded-md bg-zinc-800 px-2.5">
-                <span className="text-[10px] text-zinc-600">taskflow.app/projects/website</span>
-              </div>
-            </div>
-
-            {/* Mock board */}
-            <div className="p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <p className="text-xs font-medium text-zinc-400">Website Redesign</p>
-                <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-400">
-                  Active
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                {MOCK_COLUMNS.map((col) => (
-                  <div
-                    key={col.label}
-                    className="rounded-xl border border-zinc-800 bg-zinc-950 p-3"
-                  >
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className={`text-[11px] font-semibold uppercase tracking-wider ${col.color}`}>
-                        {col.label}
-                      </span>
-                      <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-500">
-                        {col.tasks.length}
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {col.tasks.map((task) => (
-                        <div
-                          key={task.title}
-                          className="rounded-lg border border-zinc-800 bg-zinc-900 p-2.5"
-                        >
-                          <p className="text-xs font-medium text-zinc-100">{task.title}</p>
-                          <div className="mt-2 flex justify-end">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${PRIORITY_STYLES[task.priority]}`}>
-                              {PRIORITY_LABELS[task.priority]}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Bottom fade */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-zinc-950 to-transparent" />
-          </div>
+          <HeroMockup />
         </div>
       </section>
 

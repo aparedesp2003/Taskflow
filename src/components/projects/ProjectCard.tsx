@@ -24,7 +24,12 @@ export default function ProjectCard({ project }: ProjectCardProps) {
           <h3 className="text-sm font-semibold leading-snug text-white group-hover:text-indigo-300 transition-colors duration-200">
             {project.name}
           </h3>
-          <Badge label={project.status} variant={statusVariant[project.status]} />
+          <div className="flex shrink-0 items-center gap-1.5">
+            {project.isShared && (
+              <Badge label="Shared" variant="default" />
+            )}
+            <Badge label={project.status} variant={statusVariant[project.status]} />
+          </div>
         </div>
 
         <p className="text-xs font-medium uppercase tracking-wider text-zinc-600">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 type ModalProps = {
   isOpen: boolean;
@@ -9,41 +10,42 @@ type ModalProps = {
   children: ReactNode;
 };
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+}: ModalProps) {
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    if (isOpen) {
-      document.addEventListener("keydown", handleKey);
-      document.body.style.overflow = "hidden";
-    }
+
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
     };
   }, [isOpen, onClose]);
 
-  return (
+  if (!isOpen || typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${
-        isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-      }`}
+      className="fixed inset-0 z-[9999] flex min-h-dvh items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
     >
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      <div
-        className={`relative mx-4 w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl transition-all duration-200 ${
-          isOpen
-            ? "translate-y-0 scale-100 opacity-100"
-            : "translate-y-2 scale-95 opacity-0"
-        }`}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-900 px-6 py-4">
           <h2 className="text-sm font-semibold text-white">{title}</h2>
+
           <button
             type="button"
             aria-label="Close"
@@ -66,8 +68,9 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
           </button>
         </div>
 
-        <div className="px-6 py-5">{children}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

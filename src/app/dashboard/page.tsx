@@ -10,47 +10,47 @@ import Badge from "@/components/ui/Badge";
 import type { BadgeVariant } from "@/components/ui/Badge";
 
 type ProjectRow = {
-  id:          string;
-  user_id:     string;
-  name:        string;
+  id: string;
+  user_id: string;
+  name: string;
   description: string | null;
-  status:      string;
-  created_at:  string;
+  status: string;
+  created_at: string;
 };
 
 type UpcomingTaskRow = {
-  id:         string;
-  title:      string;
-  priority:   string;
-  due_date:   string;
+  id: string;
+  title: string;
+  priority: string;
+  due_date: string;
   project_id: string;
 };
 
 type StatItem = {
-  label:          string;
-  value:          number;
-  icon:           ReactNode;
-  insight:        string;
+  label: string;
+  value: number;
+  icon: ReactNode;
+  insight: string;
   insightVariant: InsightVariant;
 };
 
 const projectStatusVariant: Record<string, BadgeVariant> = {
-  Planning:  "default",
-  Active:    "info",
+  Planning: "default",
+  Active: "info",
   Completed: "success",
   "On Hold": "warning",
 };
 
 const taskPriorityVariant: Record<string, BadgeVariant> = {
-  low:    "default",
+  low: "default",
   medium: "warning",
-  high:   "danger",
+  high: "danger",
 };
 
 const taskPriorityLabel: Record<string, string> = {
-  low:    "Low",
+  low: "Low",
   medium: "Medium",
-  high:   "High",
+  high: "High",
 };
 
 export default async function DashboardPage() {
@@ -64,25 +64,24 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // Step 1: Fetch all user projects — reused for KPIs, recent list, and project name lookup
+  // Step 1: Fetch all accessible projects — RLS returns owned + shared projects
   const { data: rawProjects } = await supabase
     .from("projects")
     .select("id, user_id, name, description, status, created_at")
-    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const projectRows: ProjectRow[] = ((rawProjects ?? []) as ProjectRow[]).filter(
-    (r) => r.user_id === user.id
+  const projectRows: ProjectRow[] = (rawProjects ?? []) as ProjectRow[];
+
+  const totalProjects = projectRows.length;
+  const recentProjectRows = projectRows.slice(0, 4);
+  const projectIds = projectRows.map((r) => r.id);
+  const projectNameMap = Object.fromEntries(
+    projectRows.map((r) => [r.id, r.name]),
   );
 
-  const totalProjects     = projectRows.length;
-  const recentProjectRows = projectRows.slice(0, 4);
-  const projectIds        = projectRows.map((r) => r.id);
-  const projectNameMap    = Object.fromEntries(projectRows.map((r) => [r.id, r.name]));
-
   // Step 2: Task queries — skipped entirely if user has no projects
-  let inProgressCount    = 0;
-  let doneCount          = 0;
+  let inProgressCount = 0;
+  let doneCount = 0;
   let upcomingTaskRows: UpcomingTaskRow[] = [];
 
   if (projectIds.length > 0) {
@@ -106,42 +105,69 @@ export default async function DashboardPage() {
         .limit(5),
     ]);
 
-    inProgressCount  = inProgressResult.count  ?? 0;
-    doneCount        = doneResult.count         ?? 0;
-    upcomingTaskRows = (upcomingResult.data     ?? []) as UpcomingTaskRow[];
+    inProgressCount = inProgressResult.count ?? 0;
+    doneCount = doneResult.count ?? 0;
+    upcomingTaskRows = (upcomingResult.data ?? []) as UpcomingTaskRow[];
   }
 
   const stats: StatItem[] = [
     {
-      label:          "Total Projects",
-      value:          totalProjects,
-      insight:        "Active workspace",
+      label: "Total Projects",
+      value: totalProjects,
+      insight: "Active workspace",
       insightVariant: "neutral",
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
         </svg>
       ),
     },
     {
-      label:          "Tasks In Progress",
-      value:          inProgressCount,
-      insight:        "Currently active",
+      label: "Tasks In Progress",
+      value: inProgressCount,
+      insight: "Currently active",
       insightVariant: "warning",
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="12" cy="12" r="10" />
           <polyline points="12 6 12 12 16 14" />
         </svg>
       ),
     },
     {
-      label:          "Completed Tasks",
-      value:          doneCount,
-      insight:        "Finished work",
+      label: "Completed Tasks",
+      value: doneCount,
+      insight: "Finished work",
       insightVariant: "positive",
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <polyline points="20 6 9 17 4 12" />
         </svg>
       ),
@@ -172,7 +198,9 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card>
             <div className="border-b border-zinc-800 px-6 py-4">
-              <h2 className="text-sm font-semibold text-white">Recent Projects</h2>
+              <h2 className="text-sm font-semibold text-white">
+                Recent Projects
+              </h2>
             </div>
             <ul>
               {recentProjectRows.length === 0 ? (
@@ -190,14 +218,18 @@ export default async function DashboardPage() {
                     }`}
                   >
                     <div className="min-w-0 pr-4">
-                      <p className="text-sm font-medium text-white">{project.name}</p>
+                      <p className="text-sm font-medium text-white">
+                        {project.name}
+                      </p>
                       <p className="truncate text-xs text-zinc-500">
                         {project.description ?? "No description"}
                       </p>
                     </div>
                     <Badge
                       label={project.status}
-                      variant={projectStatusVariant[project.status] ?? "default"}
+                      variant={
+                        projectStatusVariant[project.status] ?? "default"
+                      }
                     />
                   </li>
                 ))
@@ -207,7 +239,9 @@ export default async function DashboardPage() {
 
           <Card>
             <div className="border-b border-zinc-800 px-6 py-4">
-              <h2 className="text-sm font-semibold text-white">Upcoming Tasks</h2>
+              <h2 className="text-sm font-semibold text-white">
+                Upcoming Tasks
+              </h2>
             </div>
             <ul>
               {upcomingTaskRows.length === 0 ? (
@@ -217,9 +251,13 @@ export default async function DashboardPage() {
               ) : (
                 upcomingTaskRows.map((task, index) => {
                   const formattedDue = new Date(
-                    task.due_date + "T00:00:00"
-                  ).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                  const projectName = projectNameMap[task.project_id] ?? "Unknown";
+                    task.due_date + "T00:00:00",
+                  ).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  });
+                  const projectName =
+                    projectNameMap[task.project_id] ?? "Unknown";
                   return (
                     <li
                       key={task.id}
@@ -230,14 +268,20 @@ export default async function DashboardPage() {
                       }`}
                     >
                       <div className="min-w-0 pr-4">
-                        <p className="text-sm font-medium text-white">{task.title}</p>
+                        <p className="text-sm font-medium text-white">
+                          {task.title}
+                        </p>
                         <p className="truncate text-xs text-zinc-500">
                           {projectName} · {formattedDue}
                         </p>
                       </div>
                       <Badge
-                        label={taskPriorityLabel[task.priority] ?? task.priority}
-                        variant={taskPriorityVariant[task.priority] ?? "default"}
+                        label={
+                          taskPriorityLabel[task.priority] ?? task.priority
+                        }
+                        variant={
+                          taskPriorityVariant[task.priority] ?? "default"
+                        }
                       />
                     </li>
                   );

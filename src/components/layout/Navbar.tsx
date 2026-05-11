@@ -1,11 +1,14 @@
+import Image from "next/image";
 import SearchBox from "@/components/layout/SearchBox";
 import NotificationBell from "@/components/layout/NotificationBell";
+import NewTaskButton from "@/components/layout/NewTaskButton";
 
 type NavbarProps = {
-  userEmail: string;
+  userEmail:  string;
+  avatarUrl?: string | null;
 };
 
-export default function Navbar({ userEmail }: NavbarProps) {
+export default function Navbar({ userEmail, avatarUrl }: NavbarProps) {
   const initial = userEmail.charAt(0).toUpperCase();
 
   return (
@@ -15,18 +18,23 @@ export default function Navbar({ userEmail }: NavbarProps) {
       <div className="flex items-center gap-3">
         <NotificationBell />
 
-        <button
-          type="button"
-          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
-        >
-          + New Task
-        </button>
+        <NewTaskButton />
 
         <div className="flex items-center gap-4 border-l border-zinc-800 pl-3">
           <span className="text-sm text-zinc-400">{userEmail}</span>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
-            {initial}
-          </div>
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt="Profile picture"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
+              {initial}
+            </div>
+          )}
         </div>
       </div>
     </header>

@@ -67,22 +67,19 @@ export default function SearchBox() {
       return;
     }
 
+    // RLS returns owned + shared projects — no ownership filter needed
     const [projectSearchResult, allProjectsResult] = await Promise.all([
       supabase
         .from("projects")
-        .select("id, name, status, user_id")
-        .eq("user_id", user.id)
+        .select("id, name, status")
         .ilike("name", `%${q}%`)
         .limit(5),
       supabase
         .from("projects")
-        .select("id, name")
-        .eq("user_id", user.id),
+        .select("id, name"),
     ]);
 
-    const matchedProjects: SearchProject[] = (
-      (projectSearchResult.data ?? []) as (SearchProject & { user_id: string })[]
-    ).filter((p) => p.user_id === user.id);
+    const matchedProjects: SearchProject[] = (projectSearchResult.data ?? []) as SearchProject[];
 
     const allProjects = (allProjectsResult.data ?? []) as AllProjectRow[];
     const projectIds  = allProjects.map((p) => p.id);

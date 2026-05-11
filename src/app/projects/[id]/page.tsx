@@ -7,34 +7,50 @@ import StatsCard from "@/components/dashboard/StatsCard";
 import ProjectWorkspaceHeader from "@/components/projects/ProjectWorkspaceHeader";
 import TaskBoard from "@/components/tasks/TaskBoard";
 import ProjectDetailsCard from "@/components/projects/ProjectDetailsCard";
+import TeamCard from "@/components/projects/TeamCard";
 import type { Project, ProjectStatus } from "@/types/project";
 import type { Task, TaskStatus, TaskPriority } from "@/types/task";
+import type { ProjectMember, MemberRole } from "@/types/project-member";
 
 type ProjectRow = {
-  id:          string;
-  user_id:     string;
-  name:        string;
+  id: string;
+  user_id: string;
+  name: string;
   description: string | null;
-  status:      string;
-  due_date:    string | null;
-  created_at:  string;
+  status: string;
+  due_date: string | null;
+  created_at: string;
 };
 
 type TaskRow = {
-  id:          string;
-  project_id:  string;
-  title:       string;
+  id: string;
+  project_id: string;
+  title: string;
   description: string | null;
-  status:      string;
-  priority:    string;
-  due_date:    string | null;
-  created_at:  string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  created_at: string;
+};
+
+type MemberRow = {
+  id: string;
+  user_id: string;
+  role: string;
+  created_at: string;
+};
+
+type ProfileRow = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
 };
 
 type KpiStat = {
   label: string;
   value: number;
-  icon:  ReactNode;
+  icon: ReactNode;
 };
 
 function ProjectNotFound() {
@@ -88,6 +104,7 @@ export default async function ProjectWorkspacePage({
     redirect("/login");
   }
 
+  // RLS handles access — returns null if user is neither owner nor member
   const { data } = await supabase
     .from("projects")
     .select("id, user_id, name, description, status, due_date, created_at")
@@ -95,10 +112,9 @@ export default async function ProjectWorkspacePage({
     .maybeSingle();
 
   const row = data as ProjectRow | null;
+  if (!row) return <ProjectNotFound />;
 
-  if (!row || row.user_id !== user.id) {
-    return <ProjectNotFound />;
-  }
+  const isOwner = row.user_id === user.id;
 
   const project: Project = {
     id:          row.id,
@@ -108,6 +124,7 @@ export default async function ProjectWorkspacePage({
     category:    "",
     progress:    0,
     taskCount:   0,
+    rawDueDate:  row.due_date ?? "",
     dueDate:     row.due_date
       ? new Date(row.due_date + "T00:00:00").toLocaleDateString("en-US", {
           month: "short",
@@ -122,38 +139,106 @@ export default async function ProjectWorkspacePage({
     }),
   };
 
-  const { data: taskRows, error: tasksError } = await supabase
-    .from("tasks")
-    .select("id, project_id, title, description, status, priority, due_date, created_at")
-    .eq("project_id", row.id)
-    .order("created_at", { ascending: true });
+  // Fetch tasks and member rows in parallel (members fetched flat — no nested join)
+  const [taskResult, memberResult] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select(
+        "id, project_id, title, description, status, priority, due_date, created_at",
+      )
+      .eq("project_id", row.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("project_members")
+      .select("id, user_id, role, created_at")
+      .eq("project_id", row.id),
+  ]);
 
-  if (tasksError) {
-    console.error("Failed to fetch tasks:", tasksError.message);
+  const memberRows = (memberResult.data ?? []) as MemberRow[];
+  const memberUserIds = memberRows.map((m) => m.user_id);
+
+  // One profiles query covers the owner + every member — avoids a nested join
+  // that would silently return null if no FK from project_members.user_id → profiles.id exists.
+  const allProfileIds = Array.from(new Set([row.user_id, ...memberUserIds]));
+
+  const { data: profilesData, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", allProfileIds);
+
+  if (profilesError) {
+    console.error("[TeamCard] profiles query failed:", profilesError.message);
   }
 
-  const tasks: Task[] = (taskRows ?? []).map((t: TaskRow) => ({
-    id:          t.id,
-    projectId:   t.project_id,
-    title:       t.title,
+  const profilesMap = Object.fromEntries(
+    ((profilesData ?? []) as ProfileRow[]).map((p) => [p.id, p]),
+  );
+
+  // RPC email is only used when profiles.email is absent (belt-and-suspenders).
+  type EmailRow = { user_id: string; email: string };
+  const rpcEmailsMap: Record<string, string> = {};
+  try {
+    const { data: emailRows } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: string,
+          args: { user_ids: string[] },
+        ) => Promise<{ data: EmailRow[] | null }>;
+      }
+    ).rpc("get_member_emails", { user_ids: allProfileIds });
+    for (const r of emailRows ?? []) rpcEmailsMap[r.user_id] = r.email;
+  } catch {
+    // RPC not created — no fallback needed if profiles.email is populated
+  }
+
+  const tasks: Task[] = ((taskResult.data ?? []) as TaskRow[]).map((t) => ({
+    id: t.id,
+    projectId: t.project_id,
+    title: t.title,
     description: t.description ?? "",
-    status:      t.status   as TaskStatus,
-    priority:    t.priority as TaskPriority,
-    dueDate:     t.due_date ?? "",
+    status: t.status as TaskStatus,
+    priority: t.priority as TaskPriority,
+    dueDate: t.due_date ?? "",
     createdAt: t.created_at,
   }));
 
-  const totalTasks   = tasks.length;
-  const todoCount    = tasks.filter((t) => t.status === "todo").length;
-  const inProgCount  = tasks.filter((t) => t.status === "in_progress").length;
-  const doneCount    = tasks.filter((t) => t.status === "done").length;
+  const members: ProjectMember[] = memberRows.map((m) => ({
+    id: m.id,
+    userId: m.user_id,
+    role: m.role as MemberRole,
+    fullName: profilesMap[m.user_id]?.full_name ?? null,
+    email: profilesMap[m.user_id]?.email ?? rpcEmailsMap[m.user_id] ?? null,
+    avatarUrl: profilesMap[m.user_id]?.avatar_url ?? null,
+    createdAt: m.created_at,
+  }));
+
+  const ownerProfile = profilesMap[row.user_id];
+  const initialOwner = {
+    fullName: ownerProfile?.full_name ?? null,
+    email: ownerProfile?.email ?? rpcEmailsMap[row.user_id] ?? null,
+    avatarUrl: ownerProfile?.avatar_url ?? null,
+  };
+
+  const totalTasks = tasks.length;
+  const todoCount = tasks.filter((t) => t.status === "todo").length;
+  const inProgCount = tasks.filter((t) => t.status === "in_progress").length;
+  const doneCount = tasks.filter((t) => t.status === "done").length;
 
   const kpiStats: KpiStat[] = [
     {
       label: "Total Tasks",
       value: totalTasks,
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
           <rect x="9" y="3" width="6" height="4" rx="1" ry="1" />
           <path d="m9 12 2 2 4-4" />
@@ -164,7 +249,16 @@ export default async function ProjectWorkspacePage({
       label: "To Do",
       value: todoCount,
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="12" cy="12" r="10" />
         </svg>
       ),
@@ -173,7 +267,16 @@ export default async function ProjectWorkspacePage({
       label: "In Progress",
       value: inProgCount,
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="12" cy="12" r="10" />
           <polyline points="12 6 12 12 16 14" />
         </svg>
@@ -183,7 +286,16 @@ export default async function ProjectWorkspacePage({
       label: "Completed",
       value: doneCount,
       icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
           <polyline points="22 4 12 14.01 9 11.01" />
         </svg>
@@ -193,7 +305,10 @@ export default async function ProjectWorkspacePage({
 
   return (
     <AppShell>
-      <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-sm">
+      <nav
+        aria-label="Breadcrumb"
+        className="mb-6 flex items-center gap-2 text-sm"
+      >
         <Link
           href="/projects"
           className="text-zinc-500 transition-colors hover:text-zinc-300"
@@ -222,8 +337,15 @@ export default async function ProjectWorkspacePage({
           <div className="lg:col-span-2">
             <TaskBoard tasks={tasks} projectId={project.id} />
           </div>
-          <div className="lg:sticky lg:top-6 lg:self-start">
-            <ProjectDetailsCard project={project} />
+          <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
+            <ProjectDetailsCard project={project} isOwner={isOwner} />
+            <TeamCard
+              projectId={project.id}
+              ownerId={row.user_id}
+              currentUserId={user.id}
+              initialOwner={initialOwner}
+              initialMembers={members}
+            />
           </div>
         </div>
       </div>

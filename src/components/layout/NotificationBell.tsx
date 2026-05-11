@@ -76,10 +76,10 @@ export default function NotificationBell() {
       return;
     }
 
+    // RLS returns owned + shared projects — no ownership filter needed
     const { data: projectData } = await supabase
       .from("projects")
-      .select("id, name")
-      .eq("user_id", user.id);
+      .select("id, name");
 
     if (fetchId !== fetchIdRef.current) {
       if (skeletonTimer) clearTimeout(skeletonTimer);

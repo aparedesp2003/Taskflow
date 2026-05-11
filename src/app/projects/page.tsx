@@ -26,35 +26,34 @@ export default async function ProjectsPage() {
     redirect("/login");
   }
 
+  // RLS returns owned + shared projects — no ownership filter needed
   const { data: rows, error } = await supabase
     .from("projects")
     .select("id, user_id, name, description, status, due_date, created_at")
-    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Failed to fetch projects:", error.message);
   }
 
-  const projects: Project[] = (rows ?? [])
-    .filter((row: ProjectRow) => row.user_id === user.id)
-    .map((row: ProjectRow) => ({
-      id:          row.id,
-      name:        row.name,
-      description: row.description ?? "",
-      status:      row.status as ProjectStatus,
-      category:    "",
-      progress:    0,
-      taskCount:   0,
-      dueDate:     row.due_date
-        ? new Date(row.due_date + "T00:00:00").toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })
-        : "",
-      createdAt: row.created_at,
-    }));
+  const projects: Project[] = (rows ?? []).map((row: ProjectRow) => ({
+    id:          row.id,
+    name:        row.name,
+    description: row.description ?? "",
+    status:      row.status as ProjectStatus,
+    category:    "",
+    progress:    0,
+    taskCount:   0,
+    dueDate:     row.due_date
+      ? new Date(row.due_date + "T00:00:00").toLocaleDateString("en-US", {
+          month: "short",
+          day:   "numeric",
+          year:  "numeric",
+        })
+      : "",
+    createdAt: row.created_at,
+    isShared:  row.user_id !== user.id,
+  }));
 
   return (
     <AppShell>

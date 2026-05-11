@@ -8,8 +8,9 @@ import ProfileCard from "@/components/settings/ProfileCard";
 import AccountCard from "@/components/settings/AccountCard";
 
 type ProfileRow = {
-  id:        string;
-  full_name: string | null;
+  id:         string;
+  full_name:  string | null;
+  avatar_url: string | null;
 };
 
 export default async function SettingsPage() {
@@ -25,14 +26,15 @@ export default async function SettingsPage() {
 
   const { data: profileData } = await supabase
     .from("profiles")
-    .select("id, full_name")
+    .select("id, full_name, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
 
-  const profile   = profileData as ProfileRow | null;
-  const fullName  = profile?.full_name ?? "";
-  const email     = user.email ?? "";
-  const createdAt = user.created_at ?? null;
+  const profile    = profileData as ProfileRow | null;
+  const fullName   = profile?.full_name  ?? "";
+  const avatarUrl  = profile?.avatar_url ?? null;
+  const email      = user.email          ?? "";
+  const createdAt  = user.created_at     ?? null;
 
   return (
     <AppShell>
@@ -42,7 +44,7 @@ export default async function SettingsPage() {
       />
 
       <div className="max-w-2xl space-y-6">
-        <ProfileCard userId={user.id} fullName={fullName} email={email} />
+        <ProfileCard userId={user.id} fullName={fullName} email={email} avatarUrl={avatarUrl} />
 
         <AccountCard email={email} createdAt={createdAt} />
 
@@ -98,7 +100,7 @@ export default async function SettingsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <Badge label="Coming soon" variant="default" />
-                <div className="relative h-5 w-9 cursor-not-allowed rounded-full bg-zinc-700 opacity-40">
+                <div className="pointer-events-none relative h-5 w-9 cursor-not-allowed rounded-full bg-zinc-700 opacity-40">
                   <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-zinc-400" />
                 </div>
               </div>
