@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Badge from "@/components/ui/Badge";
 import type { BadgeVariant } from "@/components/ui/Badge";
+import { getProjectStatusFromProgress } from "@/utils/project";
 
 type SearchProject = {
-  id:     string;
-  name:   string;
-  status: string;
+  id:       string;
+  name:     string;
+  progress: number;
 };
 
 type SearchTask = {
@@ -23,13 +24,6 @@ type SearchTask = {
 type AllProjectRow = {
   id:   string;
   name: string;
-};
-
-const projectStatusVariant: Record<string, BadgeVariant> = {
-  Planning:  "default",
-  Active:    "info",
-  Completed: "success",
-  "On Hold": "warning",
 };
 
 const taskPriorityVariant: Record<string, BadgeVariant> = {
@@ -71,7 +65,7 @@ export default function SearchBox() {
     const [projectSearchResult, allProjectsResult] = await Promise.all([
       supabase
         .from("projects")
-        .select("id, name, status")
+        .select("id, name")
         .ilike("name", `%${q}%`)
         .limit(5),
       supabase
@@ -79,27 +73,60 @@ export default function SearchBox() {
         .select("id, name"),
     ]);
 
-    const matchedProjects: SearchProject[] = (projectSearchResult.data ?? []) as SearchProject[];
+    const rawMatchedProjects = (projectSearchResult.data ?? []) as { id: string; name: string }[];
+    const matchedProjectIds  = rawMatchedProjects.map((p) => p.id);
 
     const allProjects = (allProjectsResult.data ?? []) as AllProjectRow[];
     const projectIds  = allProjects.map((p) => p.id);
     const nameMap     = Object.fromEntries(allProjects.map((p) => [p.id, p.name]));
 
     let matchedTasks: SearchTask[] = [];
+    let projectProgressMap: Record<string, number> = {};
 
     if (projectIds.length > 0) {
-      const { data: taskData } = await supabase
-        .from("tasks")
-        .select("id, title, priority, project_id")
-        .in("project_id", projectIds)
-        .ilike("title", `%${q}%`)
-        .limit(5);
+      type RawTaskCountRow = { project_id: string; status: string };
 
-      matchedTasks = ((taskData ?? []) as Omit<SearchTask, "projectName">[]).map((t) => ({
+      const [taskSearchResult, taskCountResult] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("id, title, priority, project_id")
+          .in("project_id", projectIds)
+          .ilike("title", `%${q}%`)
+          .limit(5),
+        matchedProjectIds.length > 0
+          ? supabase
+              .from("tasks")
+              .select("project_id, status")
+              .in("project_id", matchedProjectIds)
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+
+      matchedTasks = ((taskSearchResult.data ?? []) as Omit<SearchTask, "projectName">[]).map((t) => ({
         ...t,
         projectName: nameMap[t.project_id] ?? "Unknown",
       }));
+
+      const taskTotals: Record<string, { total: number; done: number }> = {};
+      for (const t of (taskCountResult.data ?? []) as RawTaskCountRow[]) {
+        if (!taskTotals[t.project_id]) taskTotals[t.project_id] = { total: 0, done: 0 };
+        taskTotals[t.project_id].total++;
+        if (t.status === "done") taskTotals[t.project_id].done++;
+      }
+
+      projectProgressMap = Object.fromEntries(
+        matchedProjectIds.map((pid) => {
+          const counts = taskTotals[pid] ?? { total: 0, done: 0 };
+          const progress = counts.total === 0 ? 0 : Math.round((counts.done / counts.total) * 100);
+          return [pid, progress];
+        }),
+      );
     }
+
+    const matchedProjects: SearchProject[] = rawMatchedProjects.map((p) => ({
+      id:       p.id,
+      name:     p.name,
+      progress: projectProgressMap[p.id] ?? 0,
+    }));
 
     setProjects(matchedProjects);
     setTasks(matchedTasks);
@@ -188,35 +215,35 @@ export default function SearchBox() {
                       Projects
                     </span>
                   </div>
-                  {projects.map((project) => (
-                    <button
-                      key={project.id}
-                      type="button"
-                      onClick={() => handleSelect(`/projects/${project.id}`)}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-zinc-800/60"
-                    >
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="shrink-0 text-zinc-500"
-                        >
-                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                        </svg>
-                        <span className="truncate text-sm text-zinc-200">{project.name}</span>
-                      </div>
-                      <Badge
-                        label={project.status}
-                        variant={projectStatusVariant[project.status] ?? "default"}
-                      />
-                    </button>
-                  ))}
+                  {projects.map((project) => {
+                    const progressStatus = getProjectStatusFromProgress(project.progress);
+                    return (
+                      <button
+                        key={project.id}
+                        type="button"
+                        onClick={() => handleSelect(`/projects/${project.id}`)}
+                        className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-zinc-800/60"
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <svg
+                            width="13"
+                            height="13"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="shrink-0 text-zinc-500"
+                          >
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                          </svg>
+                          <span className="truncate text-sm text-zinc-200">{project.name}</span>
+                        </div>
+                        <Badge label={progressStatus.label} variant={progressStatus.variant} />
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 

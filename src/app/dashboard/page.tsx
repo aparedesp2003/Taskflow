@@ -8,6 +8,7 @@ import type { InsightVariant } from "@/components/dashboard/StatsCard";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import type { BadgeVariant } from "@/components/ui/Badge";
+import { getProjectStatusFromProgress } from "@/utils/project";
 
 type ProjectRow = {
   id: string;
@@ -26,19 +27,14 @@ type UpcomingTaskRow = {
   project_id: string;
 };
 
+type RecentTaskRow = { project_id: string; status: string };
+
 type StatItem = {
   label: string;
   value: number;
   icon: ReactNode;
   insight: string;
   insightVariant: InsightVariant;
-};
-
-const projectStatusVariant: Record<string, BadgeVariant> = {
-  Planning: "default",
-  Active: "info",
-  Completed: "success",
-  "On Hold": "warning",
 };
 
 const taskPriorityVariant: Record<string, BadgeVariant> = {
@@ -74,6 +70,7 @@ export default async function DashboardPage() {
 
   const totalProjects = projectRows.length;
   const recentProjectRows = projectRows.slice(0, 4);
+  const recentProjectIds = recentProjectRows.map((r) => r.id);
   const projectIds = projectRows.map((r) => r.id);
   const projectNameMap = Object.fromEntries(
     projectRows.map((r) => [r.id, r.name]),
@@ -83,9 +80,10 @@ export default async function DashboardPage() {
   let inProgressCount = 0;
   let doneCount = 0;
   let upcomingTaskRows: UpcomingTaskRow[] = [];
+  let recentProgressMap: Record<string, number> = {};
 
   if (projectIds.length > 0) {
-    const [inProgressResult, doneResult, upcomingResult] = await Promise.all([
+    const [inProgressResult, doneResult, upcomingResult, recentTaskResult] = await Promise.all([
       supabase
         .from("tasks")
         .select("id", { count: "exact", head: true })
@@ -104,11 +102,30 @@ export default async function DashboardPage() {
         .neq("status", "done")
         .order("due_date", { ascending: true })
         .limit(5),
+      supabase
+        .from("tasks")
+        .select("project_id, status")
+        .in("project_id", recentProjectIds),
     ]);
 
     inProgressCount = inProgressResult.count ?? 0;
     doneCount = doneResult.count ?? 0;
     upcomingTaskRows = (upcomingResult.data ?? []) as UpcomingTaskRow[];
+
+    const recentTaskTotals: Record<string, { total: number; done: number }> = {};
+    for (const t of (recentTaskResult.data ?? []) as RecentTaskRow[]) {
+      if (!recentTaskTotals[t.project_id]) recentTaskTotals[t.project_id] = { total: 0, done: 0 };
+      recentTaskTotals[t.project_id].total++;
+      if (t.status === "done") recentTaskTotals[t.project_id].done++;
+    }
+
+    recentProgressMap = Object.fromEntries(
+      recentProjectIds.map((pid) => {
+        const counts = recentTaskTotals[pid] ?? { total: 0, done: 0 };
+        const progress = counts.total === 0 ? 0 : Math.round((counts.done / counts.total) * 100);
+        return [pid, progress];
+      }),
+    );
   }
 
   const stats: StatItem[] = [
@@ -209,31 +226,30 @@ export default async function DashboardPage() {
                   No projects yet
                 </li>
               ) : (
-                recentProjectRows.map((project, index) => (
-                  <li
-                    key={project.id}
-                    className={`flex items-center justify-between px-6 py-3 transition-colors hover:bg-zinc-800/40 ${
-                      index !== recentProjectRows.length - 1
-                        ? "border-b border-zinc-800/60"
-                        : ""
-                    }`}
-                  >
-                    <div className="min-w-0 pr-4">
-                      <p className="text-sm font-medium text-white">
-                        {project.name}
-                      </p>
-                      <p className="truncate text-xs text-zinc-500">
-                        {project.description ?? "No description"}
-                      </p>
-                    </div>
-                    <Badge
-                      label={project.status}
-                      variant={
-                        projectStatusVariant[project.status] ?? "default"
-                      }
-                    />
-                  </li>
-                ))
+                recentProjectRows.map((project, index) => {
+                  const progress = recentProgressMap[project.id] ?? 0;
+                  const progressStatus = getProjectStatusFromProgress(progress);
+                  return (
+                    <li
+                      key={project.id}
+                      className={`flex items-center justify-between px-6 py-3 transition-colors hover:bg-zinc-800/40 ${
+                        index !== recentProjectRows.length - 1
+                          ? "border-b border-zinc-800/60"
+                          : ""
+                      }`}
+                    >
+                      <div className="min-w-0 pr-4">
+                        <p className="text-sm font-medium text-white">
+                          {project.name}
+                        </p>
+                        <p className="truncate text-xs text-zinc-500">
+                          {project.description ?? "No description"}
+                        </p>
+                      </div>
+                      <Badge label={progressStatus.label} variant={progressStatus.variant} />
+                    </li>
+                  );
+                })
               )}
             </ul>
           </Card>

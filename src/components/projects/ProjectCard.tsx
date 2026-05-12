@@ -1,22 +1,17 @@
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
-import type { BadgeVariant } from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
-import type { Project, ProjectStatus } from "@/types/project";
-
-const statusVariant: Record<ProjectStatus, BadgeVariant> = {
-  Planning: "default",
-  Active: "info",
-  Completed: "success",
-  "On Hold": "warning",
-};
+import type { Project } from "@/types/project";
+import { getProjectStatusFromProgress } from "@/utils/project";
 
 type ProjectCardProps = {
   project: Project;
 };
 
 export default function ProjectCard({ project }: ProjectCardProps) {
+  const progressStatus = getProjectStatusFromProgress(project.progress);
+
   return (
     <Link href={`/projects/${project.id}`} className="group block">
       <Card className="flex flex-col gap-4 p-5 transition-all duration-200 hover:-translate-y-1 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-black/30">
@@ -28,7 +23,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             {project.isShared && (
               <Badge label="Shared" variant="default" />
             )}
-            <Badge label={project.status} variant={statusVariant[project.status]} />
+            <Badge label={progressStatus.label} variant={progressStatus.variant} />
           </div>
         </div>
 

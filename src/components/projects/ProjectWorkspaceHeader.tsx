@@ -1,25 +1,20 @@
 import Badge from "@/components/ui/Badge";
-import type { BadgeVariant } from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
-import type { Project, ProjectStatus } from "@/types/project";
-
-const statusVariant: Record<ProjectStatus, BadgeVariant> = {
-  Planning: "default",
-  Active: "info",
-  Completed: "success",
-  "On Hold": "warning",
-};
+import type { Project } from "@/types/project";
+import { getProjectStatusFromProgress } from "@/utils/project";
 
 type ProjectWorkspaceHeaderProps = {
   project: Project;
 };
 
 export default function ProjectWorkspaceHeader({ project }: ProjectWorkspaceHeaderProps) {
+  const progressStatus = getProjectStatusFromProgress(project.progress);
+
   return (
     <div>
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-2xl font-semibold text-white">{project.name}</h1>
-        <Badge label={project.status} variant={statusVariant[project.status]} />
+        <Badge label={progressStatus.label} variant={progressStatus.variant} />
       </div>
 
       {project.description && (

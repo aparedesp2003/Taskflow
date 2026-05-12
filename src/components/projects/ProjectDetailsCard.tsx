@@ -8,15 +8,8 @@ import Modal from "@/components/ui/Modal";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/hooks/useToast";
-import type { BadgeVariant } from "@/components/ui/Badge";
 import type { Project, ProjectStatus } from "@/types/project";
-
-const statusVariant: Record<ProjectStatus, BadgeVariant> = {
-  Planning:  "default",
-  Active:    "info",
-  Completed: "success",
-  "On Hold": "warning",
-};
+import { getProjectStatusFromProgress } from "@/utils/project";
 
 type EditForm = {
   name:        string;
@@ -116,6 +109,8 @@ export default function ProjectDetailsCard({ project, isOwner }: ProjectDetailsC
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+  const progressStatus = getProjectStatusFromProgress(project.progress);
+
   return (
     <>
       <Card className="flex flex-col">
@@ -126,7 +121,7 @@ export default function ProjectDetailsCard({ project, isOwner }: ProjectDetailsC
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-zinc-500">Status</span>
-              <Badge label={project.status} variant={statusVariant[project.status]} />
+              <Badge label={progressStatus.label} variant={progressStatus.variant} />
             </div>
             {project.dueDate && (
               <div className="flex items-center justify-between">
