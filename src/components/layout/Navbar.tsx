@@ -6,13 +6,21 @@ import NotificationBell from "@/components/layout/NotificationBell";
 import NewTaskButton from "@/components/layout/NewTaskButton";
 
 type NavbarProps = {
-  userEmail:   string;
-  avatarUrl?:  string | null;
+  displayName:  string;
+  avatarUrl?:   string | null;
   onMenuClick?: () => void;
 };
 
-export default function Navbar({ userEmail, avatarUrl, onMenuClick }: NavbarProps) {
-  const initial = userEmail.charAt(0).toUpperCase();
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2 && parts[0] && parts[parts.length - 1]) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.charAt(0).toUpperCase() || "U";
+}
+
+export default function Navbar({ displayName, avatarUrl, onMenuClick }: NavbarProps) {
+  const initials = getInitials(displayName);
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-zinc-800 bg-zinc-900/80 px-4 backdrop-blur-md sm:px-6">
@@ -40,7 +48,7 @@ export default function Navbar({ userEmail, avatarUrl, onMenuClick }: NavbarProp
         <NewTaskButton />
 
         <div className="flex items-center gap-2 border-l border-zinc-800 pl-3 sm:gap-4">
-          <span className="hidden text-sm text-zinc-400 sm:block">{userEmail}</span>
+          <span className="hidden text-sm text-zinc-400 sm:block">{displayName}</span>
           {avatarUrl ? (
             <Image
               src={avatarUrl}
@@ -50,8 +58,8 @@ export default function Navbar({ userEmail, avatarUrl, onMenuClick }: NavbarProp
               className="h-8 w-8 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
-              {initial}
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-xs font-semibold text-white">
+              {initials}
             </div>
           )}
         </div>

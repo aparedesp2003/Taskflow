@@ -25,17 +25,21 @@ const initialState: ProjectFormState = {
   dueDate: "",
 };
 
-export default function CreateProjectModal() {
+type CreateProjectModalProps = {
+  isOpen:  boolean;
+  onClose: () => void;
+};
+
+export default function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
   const router = useRouter();
   const toast  = useToast();
 
-  const [isOpen,       setIsOpen]       = useState(false);
   const [form,         setForm]         = useState<ProjectFormState>(initialState);
   const [errors,       setErrors]       = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleClose() {
-    setIsOpen(false);
+    onClose();
     setForm(initialState);
     setErrors({});
     setIsSubmitting(false);
@@ -90,16 +94,7 @@ export default function CreateProjectModal() {
   }
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className="shrink-0 rounded-lg border border-indigo-500/60 px-4 py-2 text-sm font-medium text-indigo-400 transition-colors hover:border-indigo-400 hover:bg-indigo-500/10"
-      >
-        + New Project
-      </button>
-
-      <Modal isOpen={isOpen} onClose={handleClose} title="Create New Project">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Create New Project">
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="project-name" className="mb-1.5 block text-xs font-medium text-zinc-400">
@@ -208,7 +203,6 @@ export default function CreateProjectModal() {
               </button>
             </div>
         </form>
-      </Modal>
-    </>
+    </Modal>
   );
 }

@@ -6,12 +6,12 @@ import Navbar from "@/components/layout/Navbar";
 import ToastProvider from "@/components/ui/ToastProvider";
 
 type AppShellClientProps = {
-  children:  ReactNode;
-  userEmail: string;
-  avatarUrl: string | null;
+  children:     ReactNode;
+  displayName:  string;
+  avatarUrl:    string | null;
 };
 
-export default function AppShellClient({ children, userEmail, avatarUrl }: AppShellClientProps) {
+export default function AppShellClient({ children, displayName, avatarUrl }: AppShellClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function AppShellClient({ children, userEmail, avatarUrl }: AppSh
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Navbar
-          userEmail={userEmail}
+          displayName={displayName}
           avatarUrl={avatarUrl}
           onMenuClick={() => setSidebarOpen(true)}
         />

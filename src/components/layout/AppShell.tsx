@@ -12,20 +12,28 @@ export default async function AppShell({ children }: AppShellProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const userEmail = user?.email ?? "";
+  const [nameResult, avatarResult] = await Promise.all([
+    user
+      ? supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    user
+      ? supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
 
-  const { data: profileData } = user
-    ? await supabase
-        .from("profiles")
-        .select("avatar_url")
-        .eq("id", user.id)
-        .maybeSingle()
-    : { data: null };
+  if (nameResult.error) {
+    console.error("[AppShell] name fetch failed:", nameResult.error.message);
+  }
+  if (avatarResult.error) {
+    console.error("[AppShell] avatar fetch failed:", avatarResult.error.message);
+  }
 
-  const avatarUrl = (profileData as { avatar_url: string | null } | null)?.avatar_url ?? null;
+  const fullName    = (nameResult.data as { full_name: string | null } | null)?.full_name ?? null;
+  const avatarUrl   = (avatarResult.data as { avatar_url: string | null } | null)?.avatar_url ?? null;
+  const displayName = fullName || (user?.user_metadata?.full_name as string | undefined) || "User";
 
   return (
-    <AppShellClient userEmail={userEmail} avatarUrl={avatarUrl}>
+    <AppShellClient displayName={displayName} avatarUrl={avatarUrl}>
       {children}
     </AppShellClient>
   );

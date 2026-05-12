@@ -1,7 +1,13 @@
+"use client";
+
 import ProjectCard from "@/components/projects/ProjectCard";
 import type { Project } from "@/types/project";
 
-function EmptyState() {
+type EmptyStateProps = {
+  onCreateProject?: () => void;
+};
+
+function EmptyState({ onCreateProject }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900 text-zinc-600">
@@ -15,6 +21,7 @@ function EmptyState() {
       <p className="mt-1 text-xs text-zinc-600">Create your first project to get started.</p>
       <button
         type="button"
+        onClick={onCreateProject}
         className="mt-5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
       >
         + Create Project
@@ -25,11 +32,12 @@ function EmptyState() {
 
 type ProjectListProps = {
   projects: Project[];
+  onCreateProject?: () => void;
 };
 
-export default function ProjectList({ projects }: ProjectListProps) {
+export default function ProjectList({ projects, onCreateProject }: ProjectListProps) {
   if (projects.length === 0) {
-    return <EmptyState />;
+    return <EmptyState onCreateProject={onCreateProject} />;
   }
 
   return (

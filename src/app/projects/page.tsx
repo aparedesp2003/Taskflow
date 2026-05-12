@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/AppShell";
-import ProjectList from "@/components/projects/ProjectList";
-import CreateProjectModal from "@/components/projects/CreateProjectModal";
+import ProjectsPageClient from "@/components/projects/ProjectsPageClient";
 import type { Project, ProjectStatus } from "@/types/project";
 
 type ProjectRow = {
@@ -57,15 +56,7 @@ export default async function ProjectsPage() {
 
   return (
     <AppShell>
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Projects</h1>
-          <p className="mt-1 text-sm text-zinc-400">Manage and track all your active projects.</p>
-        </div>
-        <CreateProjectModal />
-      </div>
-
-      <ProjectList projects={projects} />
+      <ProjectsPageClient projects={projects} />
     </AppShell>
   );
 }

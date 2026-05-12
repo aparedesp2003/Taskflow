@@ -23,27 +23,71 @@ function EyeOffIcon() {
   );
 }
 
+type FieldErrors = {
+  firstName?: string;
+  lastName?:  string;
+};
+
 export default function SignupForm() {
   const router = useRouter();
-  const [email,           setEmail]           = useState("");
-  const [password,        setPassword]        = useState("");
-  const [showPassword,    setShowPassword]    = useState(false);
-  const [isSubmitting,    setIsSubmitting]    = useState(false);
-  const [error,           setError]           = useState<string | null>(null);
-  const [submittedEmail,  setSubmittedEmail]  = useState<string | null>(null);
+
+  const [firstName,      setFirstName]      = useState("");
+  const [lastName,       setLastName]       = useState("");
+  const [email,          setEmail]          = useState("");
+  const [password,       setPassword]       = useState("");
+  const [showPassword,   setShowPassword]   = useState(false);
+  const [isSubmitting,   setIsSubmitting]   = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
+  const [fieldErrors,    setFieldErrors]    = useState<FieldErrors>({});
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
-    setIsSubmitting(true);
     setError(null);
 
+    const errs: FieldErrors = {};
+    if (!firstName.trim()) errs.firstName = "First name is required.";
+    if (!lastName.trim())  errs.lastName  = "Last name is required.";
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      return;
+    }
+    setFieldErrors({});
+    setIsSubmitting(true);
+
+    const fullName = `${firstName.trim()} ${lastName.trim()}`;
     const supabase = createClient();
-    const { data, error: authError } = await supabase.auth.signUp({ email, password });
+
+    const { data, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: firstName.trim(),
+          last_name:  lastName.trim(),
+          full_name:  fullName,
+        },
+      },
+    });
 
     if (authError) {
       setError(authError.message);
       setIsSubmitting(false);
       return;
+    }
+
+    if (data.user) {
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        { id: data.user.id, email, full_name: fullName },
+        { onConflict: "id" },
+      );
+
+      if (profileError) {
+        setError(profileError.message);
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     if (data.session) {
@@ -97,6 +141,46 @@ export default function SignupForm() {
           {error}
         </div>
       )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="signup-first-name" className="mb-1.5 block text-xs font-medium text-zinc-400">
+            First Name
+          </label>
+          <input
+            id="signup-first-name"
+            type="text"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="Andres"
+            className={`w-full rounded-lg border bg-zinc-800 px-3 py-2.5 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 transition-colors focus:border-indigo-500 ${
+              fieldErrors.firstName ? "border-red-500" : "border-zinc-700"
+            }`}
+          />
+          {fieldErrors.firstName && (
+            <p className="mt-1 text-xs text-red-400">{fieldErrors.firstName}</p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="signup-last-name" className="mb-1.5 block text-xs font-medium text-zinc-400">
+            Last Name
+          </label>
+          <input
+            id="signup-last-name"
+            type="text"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Paredes"
+            className={`w-full rounded-lg border bg-zinc-800 px-3 py-2.5 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 transition-colors focus:border-indigo-500 ${
+              fieldErrors.lastName ? "border-red-500" : "border-zinc-700"
+            }`}
+          />
+          {fieldErrors.lastName && (
+            <p className="mt-1 text-xs text-red-400">{fieldErrors.lastName}</p>
+          )}
+        </div>
+      </div>
 
       <div>
         <label htmlFor="signup-email" className="mb-1.5 block text-xs font-medium text-zinc-400">
