@@ -101,6 +101,7 @@ export default async function DashboardPage() {
         .select("id, title, priority, due_date, project_id")
         .in("project_id", projectIds)
         .not("due_date", "is", null)
+        .neq("status", "done")
         .order("due_date", { ascending: true })
         .limit(5),
     ]);

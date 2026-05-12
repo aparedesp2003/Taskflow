@@ -13,6 +13,7 @@ type ProfileRow = {
   id: string;
   full_name: string | null;
   email: string | null;
+  avatar_url: string | null;
 };
 
 export default async function SettingsPage() {
@@ -28,7 +29,7 @@ export default async function SettingsPage() {
 
   const { data: profileData, error: profileError } = await supabase
     .from("profiles")
-    .select("id, full_name, email")
+    .select("id, full_name, email, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -39,7 +40,7 @@ export default async function SettingsPage() {
   const profile = profileData as ProfileRow | null;
 
   const fullName = profile?.full_name ?? "";
-  const avatarUrl = null;
+  const avatarUrl = profile?.avatar_url ?? null;
   const email = profile?.email ?? user.email ?? "";
   const createdAt = user.created_at ?? null;
 
