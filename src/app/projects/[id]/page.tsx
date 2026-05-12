@@ -116,7 +116,7 @@ export default async function ProjectWorkspacePage({
 
   const isOwner = row.user_id === user.id;
 
-  const project: Project = {
+  const mappedProject: Project = {
     id:          row.id,
     name:        row.name,
     description: row.description ?? "",
@@ -223,6 +223,11 @@ export default async function ProjectWorkspacePage({
   const todoCount = tasks.filter((t) => t.status === "todo").length;
   const inProgCount = tasks.filter((t) => t.status === "in_progress").length;
   const doneCount = tasks.filter((t) => t.status === "done").length;
+
+  const calculatedProgress =
+    totalTasks === 0 ? 0 : Math.round((doneCount / totalTasks) * 100);
+
+  const project: Project = { ...mappedProject, progress: calculatedProgress };
 
   const kpiStats: KpiStat[] = [
     {
