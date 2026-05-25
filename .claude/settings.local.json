@@ -5,7 +5,10 @@
       "Bash(Select-Object FullName)",
       "Bash(npm install *)",
       "Bash(node -e \"require\\('@dnd-kit/core'\\); require\\('@dnd-kit/utilities'\\); console.log\\('ok'\\)\")",
-      "Bash(Remove-Item \"c:\\\\Users\\\\Andres Paredes\\\\Desktop\\\\Microsoft VS Code\\\\TASKFLOW_Project\\\\src\\\\middleware.ts\")"
+      "Bash(Remove-Item \"c:\\\\Users\\\\Andres Paredes\\\\Desktop\\\\Microsoft VS Code\\\\TASKFLOW_Project\\\\src\\\\middleware.ts\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Andres Paredes\\\\Desktop\\\\Microsoft VS Code\\\\Portfolio-Website\" -Recurse -Force)",
+      "Bash(Select-Object -Property FullName)",
+      "Bash(Sort-Object FullName)"
     ]
   }
 }
